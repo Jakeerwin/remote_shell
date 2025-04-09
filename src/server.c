@@ -56,10 +56,6 @@ void handle_client(int client_socket, struct sockaddr_in client_addr) {
             }
             args[i] = NULL;
 
-            for (int j = 0; args[j] != NULL; j++) {
-                fprintf(stderr, "[DEBUG] args[%d] = %s\n", j, args[j]);
-            }
-
             execvp(args[0], args);
             perror("execvp failed");
             exit(1);

@@ -47,7 +47,8 @@ int main(int argc, char *argv[]) {
             int n = recv(client_socket, recv_buffer, BUFFER_SIZE - 1, 0);
             if (n <= 0) break;
             recv_buffer[n] = '\0';
-            if (strcmp(recv_buffer, "__CMD_DONE__") == 0) break;
+            if (strstr(recv_buffer, "__CMD_DONE__") != NULL) break;
+
             printf("%s", recv_buffer);
         }
     }
