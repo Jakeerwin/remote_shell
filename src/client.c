@@ -1,4 +1,3 @@
-// Includes for standard I/O, string, socket, and networking functions
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -11,11 +10,13 @@
 #define BUFFER_SIZE 1024
 
 int main(int argc, char *argv[]) {
-    // Ensure the user passed the server IP
     if (argc != 2) {
         printf("Usage: %s <server-ip>\n", argv[0]);
         exit(1);
     }
+
+    setvbuf(stdout, NULL, _IONBF, 0); // Disable stdout buffering
+    setvbuf(stderr, NULL, _IONBF, 0); // Disable stderr buffering
 
     int client_socket;
     struct sockaddr_in server_addr;
@@ -60,7 +61,7 @@ int main(int argc, char *argv[]) {
             // Check for done marker and strip it
             char *done_marker = strstr(recv_buffer, "__CMD_DONE__");
             if (done_marker) {
-                *done_marker = '\0'; // Trim the marker
+                *done_marker = '\0';
                 printf("%s", recv_buffer);
                 break;
             }

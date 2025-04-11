@@ -1,4 +1,3 @@
-// Standard, socket, process, and signal handling includes
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -15,7 +14,7 @@
 
 int server_fd; // Server socket file descriptor (for cleanup on exit)
 
-// Handle Ctrl+C or termination gracefully
+// Handle Ctrl+C or termination
 void handle_sigint(int sig) {
     printf("\n[INFO] Caught signal %d. Cleaning up and exiting...\n", sig);
     if (server_fd > 0) close(server_fd);
@@ -28,17 +27,22 @@ void handle_client(int client_socket, struct sockaddr_in client_addr) {
     char cmd_output[BUFFER_SIZE];
     ssize_t bytes_received;
 
+    setvbuf(stdout, NULL, _IONBF, 0); // Disable stdout buffering
+    setvbuf(stderr, NULL, _IONBF, 0); // Disable stderr buffering
+
     printf("Client (%s:%d) Connected to the server successfully\n",
            inet_ntoa(client_addr.sin_addr), ntohs(client_addr.sin_port));
 
     // Command handling loop
     while ((bytes_received = recv(client_socket, buffer, BUFFER_SIZE, 0)) > 0) {
         buffer[bytes_received] = '\0';
+        buffer[strcspn(buffer, "\r\n")] = 0;
 
-        // Exit condition
-        if (strcmp(buffer, "quit\n") == 0 || strcmp(buffer, "quit") == 0) {
+        if (strcmp(buffer, "quit") == 0) {
             break;
         }
+
+        fprintf(stderr, "[DEBUG] Received command: %s\n", buffer);
 
         int pipefd[2];
         pipe(pipefd);  // Create pipe for capturing command output
@@ -54,10 +58,9 @@ void handle_client(int client_socket, struct sockaddr_in client_addr) {
 
             // Split input into args for execvp
             char *args[64];
-            buffer[strcspn(buffer, "\n")] = 0;  // Trim newline
             char *token = strtok(buffer, " ");
             int i = 0;
-            while (token != NULL && i < BUFFER_SIZE - 1) {
+            while (token != NULL && i < 63) {
                 args[i++] = token;
                 token = strtok(NULL, " ");
             }
@@ -93,7 +96,9 @@ int main() {
     struct sockaddr_in server_addr, client_addr;
     socklen_t addr_size = sizeof(client_addr);
 
-    // Register signal handlers for clean shutdown
+    setvbuf(stdout, NULL, _IONBF, 0); // Disable stdout buffering
+    setvbuf(stderr, NULL, _IONBF, 0); // Disable stderr buffering
+
     signal(SIGINT, handle_sigint);
     signal(SIGTERM, handle_sigint);
 
@@ -111,17 +116,17 @@ int main() {
 
     printf("Server listening on port %d\n", PORT);
 
-    // Accept and handle incoming clients
     while (1) {
         client_socket = accept(server_fd, (struct sockaddr *)&client_addr, &addr_size);
         if (client_socket < 0) continue;
 
-        // Fork new process to handle each client
-        if (fork() == 0) {
-            close(server_fd);  // Child doesn't need the listener
+        pid_t pid = fork();
+        if (pid == 0) {
+            fprintf(stderr, "[DEBUG] Forked child to handle client\n");
+            close(server_fd);
             handle_client(client_socket, client_addr);
         }
-        close(client_socket);  // Parent closes the client socket
+        close(client_socket);
     }
 
     return 0;
